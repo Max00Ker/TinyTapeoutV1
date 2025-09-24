@@ -18,22 +18,22 @@ pinout:
   # Inputs
   ui[0]: "input a"
   ui[1]: "input b"
-  ui[2]: ""
-  ui[3]: ""
-  ui[4]: ""
-  ui[5]: ""
-  ui[6]: ""
-  ui[7]: ""
+  ui[2]: "input b"
+  ui[3]: "input b"
+  ui[4]: "input b"
+  ui[5]: "input b"
+  ui[6]: "input b"
+  ui[7]: "input b"
 
   # Outputs
   uo[0]: "output1"
-  uo[1]: ""
-  uo[2]: ""
+  uo[1]: "output1"
+  uo[2]: "output1"
   uo[3]: ""
   uo[4]: ""
-  uo[5]: ""
-  uo[6]: ""
-  uo[7]: ""
+  uo[5]: "output1"
+  uo[6]: "output1"
+  uo[7]: "output1"
 
   # Bidirectional pins
   uio[0]: ""
