@@ -1,4 +1,4 @@
-module traffic_light (
+module tt_um_Max00Ker (
   // definitions of signals, which are visible from outside
   input  wire       clk,
   input  wire       resetn,         
