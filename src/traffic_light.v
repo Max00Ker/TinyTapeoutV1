@@ -1,7 +1,7 @@
 module tt_um_Max00Ker (
     input  wire [7:0] ui_in,    // dedizierte Inputs
     output wire [7:0] uo_out,   // dedizierte Outputs
-    inout  wire [7:0] uio,      // physikalisches Bidirektional
+    inout  wire [7:0] uio_in,   // physikalisches Bidirektional
     output wire [7:0] uio_out,  // was aus Modul rausgeht
     output wire [7:0] uio_oe,   // Output enable (1=Output aktiv, 0=Input)
     input  wire       ena,      
