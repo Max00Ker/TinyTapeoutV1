@@ -1,10 +1,12 @@
 module tt_um_Max00Ker (
-  input  wire [7:0] ui,    
-  output wire [7:0] uo,  
-  inout  wire [7:0] uio,
-  input  wire       ena,     
-  input  wire       clk,      
-  input  wire       rst_n    
+    input  wire [7:0] ui_in,    // dedizierte Inputs
+    output wire [7:0] uo_out,   // dedizierte Outputs
+    inout  wire [7:0] uio,      // physikalisches Bidirektional
+    output wire [7:0] uio_out,  // was aus Modul rausgeht
+    output wire [7:0] uio_oe,   // Output enable (1=Output aktiv, 0=Input)
+    input  wire       ena,      
+    input  wire       clk,      
+    input  wire       rst_n    
 );
 
   // interne Signale
@@ -99,7 +101,7 @@ module tt_um_Max00Ker (
     end
   end
 
-  // --- Remaining time (z.B. nur für Rot anzeigen)
+  // --- Remaining time
   always @(*) begin
     case (cur_state)
       S_RED: remaining_time = T_RED - clk_counter;
@@ -131,13 +133,14 @@ module tt_um_Max00Ker (
   assign green_light  = (cur_state == S_GREEN || (cur_state == S_GREEN_BLINK && blink));
 
   // --- Ausgabe zu den TT-Pins ---
-  assign uo[0] = red_light;
-  assign uo[1] = yellow_light;
-  assign uo[2] = green_light;
-  assign uo[7:3] = 5'b0; // unbenutzt
+  assign uo_out[0] = red_light;
+  assign uo_out[1] = yellow_light;
+  assign uo_out[2] = green_light;
+  assign uo_out[7:3] = 5'b0; // unbenutzt
 
   // 7-Segment an bidirektionale Pins
-  assign uio[6:0] = seven_seg;
-  assign uio[7]   = 1'b0; // unbenutzt
+  assign uio_out[6:0] = seven_seg;
+  assign uio_oe  = 8'b01111111;
+  assign uio_out[7]   = 1'b0; // unbenutzt
 
 endmodule
