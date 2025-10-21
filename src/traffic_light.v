@@ -1,7 +1,7 @@
 module tt_um_Max00Ker (
   // definitions of signals, which are visible from outside
   input  wire       clk,
-  input  wire       resetn,
+  input  wire       rst_n,
   input  wire       ena,
   output reg [2:0]  cur_state,  
   output reg        red_light,
@@ -36,7 +36,7 @@ module tt_um_Max00Ker (
 
   // --- FSM ---
   always @(posedge clk) begin
-    if (!resetn) begin
+    if (!rst_n) begin
       cur_state <= IDLE;
       clk_counter <= 0;
 
@@ -109,7 +109,7 @@ module tt_um_Max00Ker (
 
   // --- blink generator ---
   always @(posedge clk) begin
-    if (!resetn) begin
+    if (!rst_n) begin
       blink_counter <= 0;
       blink     <= 0;
     end else begin
