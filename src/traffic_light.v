@@ -1,7 +1,8 @@
 module tt_um_Max00Ker (
   // definitions of signals, which are visible from outside
   input  wire       clk,
-  input  wire       resetn,         
+  input  wire       resetn,
+  input  wire       ena,
   output reg [2:0]  cur_state,  
   output reg        red_light,
   output reg        yellow_light,
