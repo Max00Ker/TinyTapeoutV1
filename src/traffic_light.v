@@ -1,10 +1,10 @@
 module tt_um_Max00Ker (
-  input  wire [7:0] ui_in,    // Eingänge
-  output wire [7:0] uo_out,   // Ausgänge
-  inout  wire [7:0] uio_inout,// bidirektional
-  input  wire       ena,      // enable
-  input  wire       clk,      // clock
-  input  wire       rst_n     // reset (active low)
+  input  wire [7:0] ui,    
+  output wire [7:0] uo,  
+  inout  wire [7:0] uio,
+  input  wire       ena,     
+  input  wire       clk,      
+  input  wire       rst_n    
 );
 
   // interne Signale
@@ -131,13 +131,13 @@ module tt_um_Max00Ker (
   assign green_light  = (cur_state == S_GREEN || (cur_state == S_GREEN_BLINK && blink));
 
   // --- Ausgabe zu den TT-Pins ---
-  assign uo_out[0] = red_light;
-  assign uo_out[1] = yellow_light;
-  assign uo_out[2] = green_light;
-  assign uo_out[7:3] = 5'b0; // unbenutzt
+  assign uo[0] = red_light;
+  assign uo[1] = yellow_light;
+  assign uo[2] = green_light;
+  assign uo[7:3] = 5'b0; // unbenutzt
 
   // 7-Segment an bidirektionale Pins
-  assign uio_inout[6:0] = seven_seg;
-  assign uio_inout[7]   = 1'b0; // unbenutzt
+  assign uio[6:0] = seven_seg;
+  assign uio[7]   = 1'b0; // unbenutzt
 
 endmodule
