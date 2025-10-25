@@ -39,24 +39,22 @@ async def test_project(dut):
     # # Keep testing the module by changing the input values, waiting for
     # # one or more clock cycles, and asserting the expected output values.
 
-    dut._log.info("Check initial (red on)")
+    dut._log.info("Check initial yellow blinking")
 
-    # Anfangszustand prüfen
-    await ClockCycles(dut.clk, 2)
-    val = int(dut.uo_out.value)
-    red = (val & 0b001) != 0
-    yellow = (val & 0b010) != 0
-    green = (val & 0b100) != 0
+    yellow_seen = False
+    cycles_to_check = 10  # Anzahl der Takte, die wir beobachten wollen
 
+    for i in range(cycles_to_check):
+        await ClockCycles(dut.clk, 5)  # Warte 5 Takte pro Iteration
+        val = int(dut.uo_out.value)    # LogicArray → int
+        red    = (val & 0b001) != 0
+        yellow = (val & 0b010) != 0
+        green  = (val & 0b100) != 0
+        dut._log.info(f"Cycle {i}: R={red} Y={yellow} G={green}")
 
-    assert red and not yellow and not green, f"Expected red ON initially, got {dut.uo_out.value.binstr}"
+        # Prüfen, ob Gelb an ist, während Rot und Grün aus sind
+        if yellow and not red and not green:
+            yellow_seen = True
 
-    # Jetzt einfach ein paar Zyklen laufen lassen und Zustände beobachten
-    dut._log.info("Stepping through light states")
-
-    for i in range(20):
-        await ClockCycles(dut.clk, 10)
-        dut._log.info(f"t={i}: uo_out={dut.uo_out.value.binstr}")
-
-    # Keine feste Assertion am Ende – nur Ablauf prüfen
-    dut._log.info("Traffic light test completed")
+    # Assertion: Gelb hat mindestens einmal geleuchtet
+    assert yellow_seen, "Expected yellow blinking at startup"
