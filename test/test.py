@@ -43,9 +43,11 @@ async def test_project(dut):
 
     # Anfangszustand prüfen
     await ClockCycles(dut.clk, 2)
-    red = int(dut.uo_out.value & 0b001) != 0
-    yellow = int(dut.uo_out.value & 0b010) != 0
-    green = int(dut.uo_out.value & 0b100) != 0
+    val = int(dut.uo_out.value)
+    red = (val & 0b001) != 0
+    yellow = (val & 0b010) != 0
+    green = (val & 0b100) != 0
+
 
     assert red and not yellow and not green, f"Expected red ON initially, got {dut.uo_out.value.binstr}"
 
