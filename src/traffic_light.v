@@ -140,7 +140,6 @@ module tt_um_Max00Ker_Traffic_Light (
 
   // 7-Segment an bidirektionale Pins
   assign uio_out[6:0] = seven_seg;
-  assign uio_oe  = 8'b01111111;
-  assign uio_out[7]   = 1'b0; // unbenutzt
-
+  assign uio_out[7]   = 1'b0;         // ungenutzter Pin — auf 0 gelegt
+  assign uio_oe       = 8'b01111111;  // Bit7 = 0 (Input), Rest = Output
 endmodule
