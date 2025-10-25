@@ -1,12 +1,12 @@
-module tt_um_Max00Ker (
-    input  wire [7:0] ui_in,    // dedizierte Inputs
-    output wire [7:0] uo_out,   // dedizierte Outputs
-    input  wire [7:0] uio_in,   // physikalisches Bidirektional
-    output wire [7:0] uio_out,  // was aus Modul rausgeht
-    output wire [7:0] uio_oe,   // Output enable (1=Output aktiv, 0=Input)
-    input  wire       ena,      
-    input  wire       clk,      
-    input  wire       rst_n    
+module tt_um_Max00Ker_traffic_light (
+    input  wire [7:0] ui_in,    // Dedicated inputs
+    output wire [7:0] uo_out,   // Dedicated outputs
+    input  wire [7:0] uio_in,   // IOs: input path
+    output wire [7:0] uio_out,  // IOs: output path
+    output wire [7:0] uio_oe,   // IOs: enable path (active high: 0=input, 1= output)
+    input  wire       ena,      // will go high when the design is enabled
+    input  wire       clk,      // clock
+    input  wire       rst_n     // reset_n - low to reset
 );
 
   // interne Signale
