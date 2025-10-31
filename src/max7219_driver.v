@@ -128,6 +128,7 @@ reg [7:0] font [0:9][0:7];
     reg        prev_display_active = 0;
 
     // debug registers for GTKWave-sim
+    `ifdef SIM
     reg [7:0] display_row0;
     reg [7:0] display_row1;
     reg [7:0] display_row2;
@@ -136,6 +137,7 @@ reg [7:0] font [0:9][0:7];
     reg [7:0] display_row5;
     reg [7:0] display_row6;
     reg [7:0] display_row7;
+    `endif
 
     // FSM
     always @(posedge clk) begin
@@ -192,16 +194,18 @@ reg [7:0] font [0:9][0:7];
                     SCLK <= 0;
                     bitcount <= 0;
                     // for simulation
-                    case(row_index)
-                        0: display_row0 <= display_active ? font[digit][0] : 8'b00000000;
-                        1: display_row1 <= display_active ? font[digit][1] : 8'b00000000;
-                        2: display_row2 <= display_active ? font[digit][2] : 8'b00000000;
-                        3: display_row3 <= display_active ? font[digit][3] : 8'b00000000;
-                        4: display_row4 <= display_active ? font[digit][4] : 8'b00000000;
-                        5: display_row5 <= display_active ? font[digit][5] : 8'b00000000;
-                        6: display_row6 <= display_active ? font[digit][6] : 8'b00000000;
-                        7: display_row7 <= display_active ? font[digit][7] : 8'b00000000;
-                    endcase
+                    `ifdef SIM
+                        case(row_index)
+                            0: display_row0 <= display_active ? font[digit][0] : 8'b00000000;
+                            1: display_row1 <= display_active ? font[digit][1] : 8'b00000000;
+                            2: display_row2 <= display_active ? font[digit][2] : 8'b00000000;
+                            3: display_row3 <= display_active ? font[digit][3] : 8'b00000000;
+                            4: display_row4 <= display_active ? font[digit][4] : 8'b00000000;
+                            5: display_row5 <= display_active ? font[digit][5] : 8'b00000000;
+                            6: display_row6 <= display_active ? font[digit][6] : 8'b00000000;
+                            7: display_row7 <= display_active ? font[digit][7] : 8'b00000000;
+                        endcase
+                    `endif
                     if (row_index == 7)
                         row_index <= 0;
                     else
