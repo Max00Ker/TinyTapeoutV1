@@ -8,8 +8,8 @@
 `define TRAFFIC_LIGHT_V
 `default_nettype none
 
-`include "clk_divider.v"
-`include "max7219_driver.v"
+// `include "clk_divider.v"
+// `include "max7219_driver.v"
 
 module tt_um_Max00Ker_Traffic_Light (
     input  wire [7:0] ui_in,    // Dedicated inputs
@@ -21,7 +21,7 @@ module tt_um_Max00Ker_Traffic_Light (
     input  wire       clk,      // clock
     input  wire       rst_n     // reset_n - low to reset
 );
-`define SIM
+
   // -----------------------------------------
   // ------------- Input Outputs -------------
   // -----------------------------------------

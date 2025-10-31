@@ -6,7 +6,7 @@
 
 `default_nettype none
 
-`include "traffic_light.v"
+// `include "traffic_light.v"
 
 module tt_um_Max00Ker_Traffic_Light_Top (
     input  wire [7:0] ui_in,    // Dedicated inputs
