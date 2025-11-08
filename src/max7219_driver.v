@@ -40,140 +40,159 @@ module max7219_driver(
         .busy   (busy_spi)
     );
 
-    // font pattern from 0 to 9 + 10,11,12 smileys
-    reg [7:0] font [0:12][0:7];
-        initial begin
-            // Digit 0
-            font[0][0] = 8'b00111100;
-            font[0][1] = 8'b01100110;
-            font[0][2] = 8'b01100110;
-            font[0][3] = 8'b01111110;
-            font[0][4] = 8'b01100110;
-            font[0][5] = 8'b01100110;
-            font[0][6] = 8'b00111100;
-            font[0][7] = 8'b00000000;
+    // ROM-Funktion für Ziffern 0-9 und Smileys 10-12
+    function [7:0] get_font;
+        input [3:0] char_idx; // 0..12
+        input [2:0] row_idx;  // 0..7
+        begin
+            case (char_idx)
+                4'd0: case(row_idx) // Digit 0
+                    3'd0: get_font = 8'b00111100;
+                    3'd1: get_font = 8'b01100110;
+                    3'd2: get_font = 8'b01100110;
+                    3'd3: get_font = 8'b01111110;
+                    3'd4: get_font = 8'b01100110;
+                    3'd5: get_font = 8'b01100110;
+                    3'd6: get_font = 8'b00111100;
+                    3'd7: get_font = 8'b00000000;
+                endcase
 
-            // Digit 1
-            font[1][0] = 8'b00011000;
-            font[1][1] = 8'b00111000;
-            font[1][2] = 8'b00011000;
-            font[1][3] = 8'b00011000;
-            font[1][4] = 8'b00011000;
-            font[1][5] = 8'b00011000;
-            font[1][6] = 8'b01111110;
-            font[1][7] = 8'b00000000;
+                4'd1: case(row_idx) // Digit 1
+                    3'd0: get_font = 8'b00011000;
+                    3'd1: get_font = 8'b00111000;
+                    3'd2: get_font = 8'b00011000;
+                    3'd3: get_font = 8'b00011000;
+                    3'd4: get_font = 8'b00011000;
+                    3'd5: get_font = 8'b00011000;
+                    3'd6: get_font = 8'b01111110;
+                    3'd7: get_font = 8'b00000000;
+                endcase
 
-            // Digit 2
-            font[2][0] = 8'b00111100;
-            font[2][1] = 8'b01100110;
-            font[2][2] = 8'b00000110;
-            font[2][3] = 8'b00001100;
-            font[2][4] = 8'b00110000;
-            font[2][5] = 8'b01100000;
-            font[2][6] = 8'b01111110;
-            font[2][7] = 8'b00000000;
+                4'd2: case(row_idx) // Digit 2
+                    3'd0: get_font = 8'b00111100;
+                    3'd1: get_font = 8'b01100110;
+                    3'd2: get_font = 8'b00000110;
+                    3'd3: get_font = 8'b00001100;
+                    3'd4: get_font = 8'b00110000;
+                    3'd5: get_font = 8'b01100000;
+                    3'd6: get_font = 8'b01111110;
+                    3'd7: get_font = 8'b00000000;
+                endcase
 
-            // Digit 3
-            font[3][0] = 8'b00111100;
-            font[3][1] = 8'b01100110;
-            font[3][2] = 8'b00000110;
-            font[3][3] = 8'b00011100;
-            font[3][4] = 8'b00000110;
-            font[3][5] = 8'b01100110;
-            font[3][6] = 8'b00111100;
-            font[3][7] = 8'b00000000;
+                4'd3: case(row_idx) // Digit 3
+                    3'd0: get_font = 8'b00111100;
+                    3'd1: get_font = 8'b01100110;
+                    3'd2: get_font = 8'b00000110;
+                    3'd3: get_font = 8'b00011100;
+                    3'd4: get_font = 8'b00000110;
+                    3'd5: get_font = 8'b01100110;
+                    3'd6: get_font = 8'b00111100;
+                    3'd7: get_font = 8'b00000000;
+                endcase
 
-            // Digit 4
-            font[4][0] = 8'b00001100;
-            font[4][1] = 8'b00011100;
-            font[4][2] = 8'b00101100;
-            font[4][3] = 8'b01001100;
-            font[4][4] = 8'b01111110;
-            font[4][5] = 8'b00001100;
-            font[4][6] = 8'b00011110;
-            font[4][7] = 8'b00000000;
+                4'd4: case(row_idx) // Digit 4
+                    3'd0: get_font = 8'b00001100;
+                    3'd1: get_font = 8'b00011100;
+                    3'd2: get_font = 8'b00101100;
+                    3'd3: get_font = 8'b01001100;
+                    3'd4: get_font = 8'b01111110;
+                    3'd5: get_font = 8'b00001100;
+                    3'd6: get_font = 8'b00011110;
+                    3'd7: get_font = 8'b00000000;
+                endcase
 
-            // Digit 5
-            font[5][0] = 8'b01111110;
-            font[5][1] = 8'b01100000;
-            font[5][2] = 8'b01111100;
-            font[5][3] = 8'b00000110;
-            font[5][4] = 8'b00000110;
-            font[5][5] = 8'b01100110;
-            font[5][6] = 8'b00111100;
-            font[5][7] = 8'b00000000;
+                4'd5: case(row_idx) // Digit 5
+                    3'd0: get_font = 8'b01111110;
+                    3'd1: get_font = 8'b01100000;
+                    3'd2: get_font = 8'b01111100;
+                    3'd3: get_font = 8'b00000110;
+                    3'd4: get_font = 8'b00000110;
+                    3'd5: get_font = 8'b01100110;
+                    3'd6: get_font = 8'b00111100;
+                    3'd7: get_font = 8'b00000000;
+                endcase
 
-            // Digit 6
-            font[6][0] = 8'b00111100;
-            font[6][1] = 8'b01100110;
-            font[6][2] = 8'b01100000;
-            font[6][3] = 8'b01111100;
-            font[6][4] = 8'b01100110;
-            font[6][5] = 8'b01100110;
-            font[6][6] = 8'b00111100;
-            font[6][7] = 8'b00000000;
+                4'd6: case(row_idx) // Digit 6
+                    3'd0: get_font = 8'b00111100;
+                    3'd1: get_font = 8'b01100110;
+                    3'd2: get_font = 8'b01100000;
+                    3'd3: get_font = 8'b01111100;
+                    3'd4: get_font = 8'b01100110;
+                    3'd5: get_font = 8'b01100110;
+                    3'd6: get_font = 8'b00111100;
+                    3'd7: get_font = 8'b00000000;
+                endcase
 
-            // Digit 7
-            font[7][0] = 8'b01111110;
-            font[7][1] = 8'b01100110;
-            font[7][2] = 8'b00001100;
-            font[7][3] = 8'b00011000;
-            font[7][4] = 8'b00110000;
-            font[7][5] = 8'b00110000;
-            font[7][6] = 8'b00110000;
-            font[7][7] = 8'b00000000;
+                4'd7: case(row_idx) // Digit 7
+                    3'd0: get_font = 8'b01111110;
+                    3'd1: get_font = 8'b01100110;
+                    3'd2: get_font = 8'b00001100;
+                    3'd3: get_font = 8'b00011000;
+                    3'd4: get_font = 8'b00110000;
+                    3'd5: get_font = 8'b00110000;
+                    3'd6: get_font = 8'b00110000;
+                    3'd7: get_font = 8'b00000000;
+                endcase
 
-            // Digit 8
-            font[8][0] = 8'b00111100;
-            font[8][1] = 8'b01100110;
-            font[8][2] = 8'b01100110;
-            font[8][3] = 8'b00111100;
-            font[8][4] = 8'b01100110;
-            font[8][5] = 8'b01100110;
-            font[8][6] = 8'b00111100;
-            font[8][7] = 8'b00000000;
+                4'd8: case(row_idx) // Digit 8
+                    3'd0: get_font = 8'b00111100;
+                    3'd1: get_font = 8'b01100110;
+                    3'd2: get_font = 8'b01100110;
+                    3'd3: get_font = 8'b00111100;
+                    3'd4: get_font = 8'b01100110;
+                    3'd5: get_font = 8'b01100110;
+                    3'd6: get_font = 8'b00111100;
+                    3'd7: get_font = 8'b00000000;
+                endcase
 
-            // Digit 9
-            font[9][0] = 8'b00111100;
-            font[9][1] = 8'b01100110;
-            font[9][2] = 8'b01100110;
-            font[9][3] = 8'b00111110;
-            font[9][4] = 8'b00000110;
-            font[9][5] = 8'b01100110;
-            font[9][6] = 8'b00111100;
-            font[9][7] = 8'b00000000;
+                4'd9: case(row_idx) // Digit 9
+                    3'd0: get_font = 8'b00111100;
+                    3'd1: get_font = 8'b01100110;
+                    3'd2: get_font = 8'b01100110;
+                    3'd3: get_font = 8'b00111110;
+                    3'd4: get_font = 8'b00000110;
+                    3'd5: get_font = 8'b01100110;
+                    3'd6: get_font = 8'b00111100;
+                    3'd7: get_font = 8'b00000000;
+                endcase
 
-            // Smiley 10: Happy
-            font[10][0] = 8'b00111100;
-            font[10][1] = 8'b01000010;
-            font[10][2] = 8'b10100101; 
-            font[10][3] = 8'b10000001;
-            font[10][4] = 8'b10100101; 
-            font[10][5] = 8'b10011001;
-            font[10][6] = 8'b01000010;
-            font[10][7] = 8'b00111100;
+                4'd10: case(row_idx) // Smiley Happy
+                    3'd0: get_font = 8'b00111100;
+                    3'd1: get_font = 8'b01000010;
+                    3'd2: get_font = 8'b10100101;
+                    3'd3: get_font = 8'b10000001;
+                    3'd4: get_font = 8'b10100101;
+                    3'd5: get_font = 8'b10011001;
+                    3'd6: get_font = 8'b01000010;
+                    3'd7: get_font = 8'b00111100;
+                endcase
 
-            // Smiley 11: Neutral
-            font[11][0] = 8'b00111100;
-            font[11][1] = 8'b01000010;
-            font[11][2] = 8'b10100101; 
-            font[11][3] = 8'b10000001;
-            font[11][4] = 8'b10011101; 
-            font[11][5] = 8'b10000001;
-            font[11][6] = 8'b01000010;
-            font[11][7] = 8'b00111100;
+                4'd11: case(row_idx) // Smiley Neutral
+                    3'd0: get_font = 8'b00111100;
+                    3'd1: get_font = 8'b01000010;
+                    3'd2: get_font = 8'b10100101;
+                    3'd3: get_font = 8'b10000001;
+                    3'd4: get_font = 8'b10011101;
+                    3'd5: get_font = 8'b10000001;
+                    3'd6: get_font = 8'b01000010;
+                    3'd7: get_font = 8'b00111100;
+                endcase
 
-            // Smiley 12: Sad
-            font[12][0] = 8'b00111100;
-            font[12][1] = 8'b01000010;
-            font[12][2] = 8'b10100101; 
-            font[12][3] = 8'b10000001;
-            font[12][4] = 8'b10011001; 
-            font[12][5] = 8'b10100101; 
-            font[12][6] = 8'b01000010;
-            font[12][7] = 8'b00111100;
+                4'd12: case(row_idx) // Smiley Sad
+                    3'd0: get_font = 8'b00111100;
+                    3'd1: get_font = 8'b01000010;
+                    3'd2: get_font = 8'b10100101;
+                    3'd3: get_font = 8'b10000001;
+                    3'd4: get_font = 8'b10011001;
+                    3'd5: get_font = 8'b10100101;
+                    3'd6: get_font = 8'b01000010;
+                    3'd7: get_font = 8'b00111100;
+                endcase
 
-    end
+                default: get_font = 8'b00000000;
+            endcase
+        end
+    endfunction
 
     // States
     parameter INIT_SHUTDOWN    = 3'd0;
@@ -187,6 +206,9 @@ module max7219_driver(
     reg [2:0] row_index;
     reg [2:0] state;
     reg [2:0] next_state;
+
+    wire [7:0] row_data;
+    assign row_data = get_font(digit, row_index);
 
     // debug registers for GTKWave-sim
     `ifdef SIM
@@ -260,21 +282,21 @@ module max7219_driver(
                 SEND_ROW: begin                 
                     if (display_active)
                         // {address 00000001, data 00000000}
-                        spi_data <= {8'h01 + {5'b0, row_index}, font[digit][row_index]};
+                        spi_data <= {8'h01 + {5'b0, row_index}, row_data};
                     else
                         // all LED's off
                         spi_data <= {8'h01 + {5'b0, row_index}, 8'b00000000};
 
                     // for simulation
                     `ifdef SIM
-                        display_row0 <= font[digit][0];
-                        display_row1 <= font[digit][1];
-                        display_row2 <= font[digit][2];
-                        display_row3 <= font[digit][3];
-                        display_row4 <= font[digit][4];
-                        display_row5 <= font[digit][5];
-                        display_row6 <= font[digit][6];
-                        display_row7 <= font[digit][7];
+                        display_row0 <= get_font(digit, 0);
+                        display_row1 <= get_font(digit, 1);
+                        display_row2 <= get_font(digit, 2);
+                        display_row3 <= get_font(digit, 3);
+                        display_row4 <= get_font(digit, 4);
+                        display_row5 <= get_font(digit, 5);
+                        display_row6 <= get_font(digit, 6);
+                        display_row7 <= get_font(digit, 7);
                     `endif
                     CS <= 0;
                     start_transfer <= 1;
