@@ -57,9 +57,9 @@ async def test_project(dut):
     dut._log.info("Check initial yellow blinking (1 Hz)")
 
     yellow_seen = False
-    cycles_to_check = 200_000 
-    for i in range(0, cycles_to_check, 10_000):
-        await ClockCycles(dut.clk, 10_000)
+    cycles_to_check = 4_000_000 #4s
+    for i in range(0, cycles_to_check, 100_000):
+        await ClockCycles(dut.clk, 100_000)
         val = int(dut.uo_out.value)
         red    = (val & 0b001) != 0
         yellow = (val & 0b010) != 0

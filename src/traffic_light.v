@@ -80,8 +80,7 @@ module tt_um_Max00Ker_Traffic_Light (
     reg       blink;
 
     reg [1:0] ped_state;
-    reg [7:0] ped_counter;
-    reg       ped_blink;
+
 
     reg [3:0] countdown;
     reg [3:0] countdown_counter;
@@ -150,7 +149,6 @@ module tt_um_Max00Ker_Traffic_Light (
             car_state <= C_IDLE;
             car_counter <= 0;
             ped_state <= P_IDLE;
-            ped_counter <= 0;
             countdown <= 9;
             countdown_active <= 0;
             global_counter <= 0;
@@ -158,7 +156,6 @@ module tt_um_Max00Ker_Traffic_Light (
             car_state <= C_IDLE;
             car_counter <= 0;
             ped_state <= P_IDLE;
-            ped_counter <= 0;
             countdown_active <= 0;
             global_counter <= 0;
         end else begin
@@ -215,7 +212,6 @@ module tt_um_Max00Ker_Traffic_Light (
                 P_RED: begin
                   if(car_state == C_RED) begin 
                     ped_state <= P_GREEN; 
-                    ped_counter <= 0;
                   end
                   if (!countdown_active && !early_ped_green) begin
                     countdown <= 12; //sad smiley
@@ -225,7 +221,6 @@ module tt_um_Max00Ker_Traffic_Light (
                 P_GREEN: begin
                   if(car_state == C_RED && car_counter >= T_RED-T_GREEN_BLINK) begin 
                     ped_state <= P_GREEN_BLINK; 
-                    ped_counter <= 0;
                   end
                   if (!countdown_active && !early_ped_green) begin
                     countdown <= 10; //happy smiley
@@ -235,7 +230,6 @@ module tt_um_Max00Ker_Traffic_Light (
                 P_GREEN_BLINK: begin
                   if(car_state == C_RED_YELLOW) begin 
                     ped_state <= P_RED; 
-                    ped_counter <= 0; 
                   end
                   if (!countdown_active && !early_ped_green) begin
                     countdown <= 11; //neutral smiley

@@ -190,14 +190,14 @@ module max7219_driver(
 
     // debug registers for GTKWave-sim
     `ifdef SIM
-    reg [7:0] display_row0;
-    reg [7:0] display_row1;
-    reg [7:0] display_row2;
-    reg [7:0] display_row3;
-    reg [7:0] display_row4;
-    reg [7:0] display_row5;
-    reg [7:0] display_row6;
-    reg [7:0] display_row7;
+        reg [7:0] display_row0;
+        reg [7:0] display_row1;
+        reg [7:0] display_row2;
+        reg [7:0] display_row3;
+        reg [7:0] display_row4;
+        reg [7:0] display_row5;
+        reg [7:0] display_row6;
+        reg [7:0] display_row7;
     `endif
 
     // FSM
@@ -264,6 +264,18 @@ module max7219_driver(
                     else
                         // all LED's off
                         spi_data <= {8'h01 + {5'b0, row_index}, 8'b00000000};
+
+                    // for simulation
+                    `ifdef SIM
+                        display_row0 <= font[digit][0];
+                        display_row1 <= font[digit][1];
+                        display_row2 <= font[digit][2];
+                        display_row3 <= font[digit][3];
+                        display_row4 <= font[digit][4];
+                        display_row5 <= font[digit][5];
+                        display_row6 <= font[digit][6];
+                        display_row7 <= font[digit][7];
+                    `endif
                     CS <= 0;
                     start_transfer <= 1;
                     state <= WAIT_SPI;
