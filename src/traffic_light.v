@@ -24,11 +24,28 @@ module tt_um_Max00Ker_Traffic_Light (
     output wire [7:0] uio_out,  // IOs: output path
     output wire [7:0] uio_oe,   // IOs: enable path
     input  wire       ena,      // enable
-    input  wire       clk_10Hz, // Traffic light clock
-    input  wire       clk_1kHz, // Pedestrian button clock
-    input  wire       clk_1MHz, // Display clock
+    input  wire       clk,
     input  wire       rst_n     // active-low reset
 );
+
+    // -----------------------
+    // Clock generation
+    // -----------------------
+    wire clk_10Hz;
+    wire clk_1kHz;
+    wire clk_1MHz;
+
+    `ifdef SIM
+        // Values for GTKWave Simulation
+        clk_divider #(1000, 10) sim_div10Hz (.clk_in(clk), .rst_n(rst_n), .clk_out(clk_10Hz));
+        assign clk_1kHz = clk;
+        assign clk_1MHz = clk;
+    `else
+        // Values for real Hardware
+        clk_divider #(1_000_000, 10) hw_div10Hz  (.clk_in(clk), .rst_n(rst_n), .clk_out(clk_10Hz));
+        clk_divider #(1_000_000, 1000) hw_div1kHz (.clk_in(clk), .rst_n(rst_n), .clk_out(clk_1kHz));
+        assign clk_1MHz = clk;
+    `endif
 
     // -----------------------
     // States & Parameters
@@ -77,10 +94,11 @@ module tt_um_Max00Ker_Traffic_Light (
     // -----------------------
     // Input wires
     // -----------------------
-    
     wire switch_traffic_light_on = ui_in[0];
     wire ped_request1 = ui_in[1];
     wire ped_request2 = ui_in[2];
+    // List all unused inputs to prevent warnings
+    wire _unused = &{ena, clk, rst_n, ui_in[3], ui_in[4], ui_in[5], ui_in[6], ui_in[7], uio_in, 1'b0};
 
     // -----------------------
     // Lights
@@ -91,7 +109,11 @@ module tt_um_Max00Ker_Traffic_Light (
 
     wire ped_red_light   = ped_state == P_RED && ped_state != P_IDLE;
     wire ped_green_light = (ped_state == P_GREEN || (ped_state == P_GREEN_BLINK && blink)) && ped_state != P_IDLE;
+    
 
+    // -----------------------
+    // Output pins
+    // -----------------------
     // car light
     assign uo_out[0] = car_red_light;
     assign uo_out[1] = car_yellow_light;
@@ -102,9 +124,14 @@ module tt_um_Max00Ker_Traffic_Light (
     // pedestrian light right
     assign uo_out[5] = ped_red_light;
     assign uo_out[6] = ped_green_light;
+    // All output pins must be assigned. If not used, assign to 0.
+    assign uo_out[7] = 0;
 
     // MAX7219 Display
     wire DIN, CS, SCLK;
+    // -----------------------
+    // Bidirectional pins
+    // -----------------------
     assign uio_out[0] = DIN;
     assign uio_out[1] = CS;
     assign uio_out[2] = SCLK;
