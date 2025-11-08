@@ -8,20 +8,20 @@ from cocotb.triggers import ClockCycles
 
 @cocotb.test()
 async def test_project(dut):
-    dut._log.info("Start")
+    # dut._log.info("Start")
 
-    # Set the clock period to 10 us (100 KHz)
-    clock = Clock(dut.clk, 10, unit="us")
-    cocotb.start_soon(clock.start())
+    # # Set the clock period to 10 us (100 KHz)
+    # clock = Clock(dut.clk, 10, unit="us")
+    # cocotb.start_soon(clock.start())
 
-    # Reset
-    dut._log.info("Reset")
-    dut.ena.value = 1
-    dut.ui_in.value = 0
-    dut.uio_in.value = 0
-    dut.rst_n.value = 0
-    await ClockCycles(dut.clk, 10)
-    dut.rst_n.value = 1
+    # # Reset
+    # dut._log.info("Reset")
+    # dut.ena.value = 1
+    # dut.ui_in.value = 0
+    # dut.uio_in.value = 0
+    # dut.rst_n.value = 0
+    # await ClockCycles(dut.clk, 10)
+    # dut.rst_n.value = 1
 
     # dut._log.info("Test project behavior")
 
@@ -39,22 +39,34 @@ async def test_project(dut):
     # # Keep testing the module by changing the input values, waiting for
     # # one or more clock cycles, and asserting the expected output values.
 
-    dut._log.info("Check initial yellow blinking")
+    """Test traffic light behavior with 1 MHz clock and internal dividers"""
+    dut._log.info("Start test")
+
+    # 1 MHz Clock
+    cocotb.start_soon(Clock(dut.clk, 1, unit="us").start())
+
+    # Reset
+    dut.rst_n.value = 0
+    dut.ena.value = 1
+    dut.ui_in.value = 0
+    dut.uio_in.value = 0
+    await ClockCycles(dut.clk, 10)
+    dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 10)
+
+    dut._log.info("Check initial yellow blinking (1 Hz)")
 
     yellow_seen = False
-    cycles_to_check = 10  # Anzahl der Takte, die wir beobachten wollen
-
-    for i in range(cycles_to_check):
-        await ClockCycles(dut.clk, 5)  # Warte 5 Takte pro Iteration
-        val = int(dut.uo_out.value)    # LogicArray → int
+    cycles_to_check = 200_000 
+    for i in range(0, cycles_to_check, 10_000):
+        await ClockCycles(dut.clk, 10_000)
+        val = int(dut.uo_out.value)
         red    = (val & 0b001) != 0
         yellow = (val & 0b010) != 0
         green  = (val & 0b100) != 0
         dut._log.info(f"Cycle {i}: R={red} Y={yellow} G={green}")
 
-        # Prüfen, ob Gelb an ist, während Rot und Grün aus sind
         if yellow and not red and not green:
             yellow_seen = True
 
-    # Assertion: Gelb hat mindestens einmal geleuchtet
-    assert yellow_seen, "Expected yellow blinking at startup"
+    assert yellow_seen, "Yellow should blink at startup"

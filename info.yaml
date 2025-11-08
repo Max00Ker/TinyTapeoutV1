@@ -1,11 +1,11 @@
 # Tiny Tapeout project information
 project:
-  title:        "Traffic Light"      # Project title
+  title:        "Traffic Light Controller"      # Project title
   author:       "Maximilian Kernmaier"      # Your name
   discord:      ""      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
-  description:  "This project represents a traffic light"      # One line description of what your project does
+  description:  "A digital traffic light controller with pedestrian request handling and MAX7219 display interface."      # One line description of what your project does
   language:     "Verilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
-  clock_hz:     0       # Clock frequency in Hz (or 0 if not applicable)
+  clock_hz:     1000000       # Clock frequency in Hz (or 0 if not applicable)
 
   # How many tiles your design occupies? A single tile is about 167x108 uM.
   tiles: "1x1"          # Valid values: 1x1, 1x2, 2x2, 3x2, 4x2, 6x2 or 8x2
@@ -20,15 +20,16 @@ project:
     - "traffic_light_top.v"
     - "traffic_light.v"
     - "max7219_driver.v"
+    - "spi_master.v"
     - "clk_divider.v"
 
 # The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
 # This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).
 pinout:
   # Inputs
-  ui[0]: ""
-  ui[1]: ""
-  ui[2]: ""
+  ui[0]: "Main ON/OFF Switch"
+  ui[1]: "Pedestrian request button (left)"
+  ui[2]: "Pedestrian request button (right)"
   ui[3]: ""
   ui[4]: ""
   ui[5]: ""
@@ -36,24 +37,24 @@ pinout:
   ui[7]: ""
 
   # Outputs
-  uo[0]: "red_light"
-  uo[1]: "yellow_light"
-  uo[2]: "green_light"
-  uo[3]: "ped_red_light"
-  uo[4]: "ped_green_light"
-  uo[5]: ""
-  uo[6]: ""
+  uo[0]: "Car red light"
+  uo[1]: "Car yellow light"
+  uo[2]: "Car green light"
+  uo[3]: "Pedestrian red light (left)"
+  uo[4]: "Pedestrian green light (left)"
+  uo[5]: "Pedestrian red light (right)"
+  uo[6]: "Pedestrian green light (right)"
   uo[7]: ""
 
   # Bidirectional pins
-  uio[0]: "max_din"
-  uio[1]: "max_cs"
-  uio[2]: "max_clk"
-  uio[3]: ""
-  uio[4]: ""
-  uio[5]: ""
-  uio[6]: ""
-  uio[7]: ""
+  uio[0]: "DIN (MAX7219 left)"
+  uio[1]: "CS (MAX7219 left)"
+  uio[2]: "SCLK (MAX7219 left)"
+  uio[3]: "DIN (MAX7219 right)"
+  uio[4]: "CS (MAX7219 right)"
+  uio[5]: "SCLK (MAX7219 right)"
+  uio[6]: "Pedestrian request indicator (left)"
+  uio[7]: "Pedestrian request indicator (right)"
 
 # Do not change!
 yaml_version: 6

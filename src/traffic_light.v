@@ -1,8 +1,17 @@
-/*
- * Traffic Light Controller
- * Maximilian Kernmaier, 2025
- * SPDX-License-Identifier: Apache-2.0
- */
+// Copyright 2025 Maximilian Kernmaier
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE−2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 
 `ifndef TRAFFIC_LIGHT_V
 `define TRAFFIC_LIGHT_V
@@ -13,286 +22,280 @@ module tt_um_Max00Ker_Traffic_Light (
     output wire [7:0] uo_out,   // Dedicated outputs
     input  wire [7:0] uio_in,   // IOs: input path
     output wire [7:0] uio_out,  // IOs: output path
-    output wire [7:0] uio_oe,   // IOs: enable path (active high: 0=input, 1= output)
-    input  wire       ena,      // will go high when the design is enabled
-    input  wire       clk,      // clock
-    input  wire       rst_n     // reset_n - low to reset
+    output wire [7:0] uio_oe,   // IOs: enable path
+    input  wire       ena,      // enable
+    input  wire       clk_10Hz, // Traffic light clock
+    input  wire       clk_1kHz, // Pedestrian button clock
+    input  wire       clk_1MHz, // Display clock
+    input  wire       rst_n     // active-low reset
 );
-`define SIM
-  // -----------------------------------------
-  // ------------- Input Outputs -------------
-  // -----------------------------------------
 
-  // --- input pins ---
-  wire switch_on_off = ui_in[0];
+    // -----------------------
+    // States & Parameters
+    // -----------------------
+    localparam C_IDLE        = 3'd0;
+    localparam C_RED         = 3'd1;
+    localparam C_RED_YELLOW  = 3'd2;
+    localparam C_GREEN       = 3'd3;
+    localparam C_GREEN_BLINK = 3'd4;
+    localparam C_YELLOW      = 3'd5;
 
-  // -----------------------------------------
-  // -------------- Parameters ---------------
-  // -----------------------------------------
+    localparam P_IDLE        = 2'd0;
+    localparam P_RED         = 2'd1;
+    localparam P_GREEN       = 2'd2;
+    localparam P_GREEN_BLINK = 2'd3;
 
-  // --- states ---
-  localparam IDLE          = 3'd0;
-  localparam S_RED         = 3'd1;
-  localparam S_RED_YELLOW  = 3'd2;
-  localparam S_GREEN       = 3'd3;
-  localparam S_GREEN_BLINK = 3'd4;
-  localparam S_YELLOW      = 3'd5;
+    localparam T_RED         = 8'd150;
+    localparam T_RED_YELLOW  = 8'd10;
+    localparam T_GREEN       = 8'd150;
+    localparam T_GREEN_BLINK = 8'd40;
+    localparam T_YELLOW      = 8'd30;
+    localparam T_COUNTDOWN   = 8'd90;
+    localparam BLINK_VAL     = 8'd5;
+    localparam DEBOUNCE_TIME = 9'd50;
 
-  // --- light durations within states ---
-  localparam T_RED              = 5'd20;
-  localparam T_RED_YELLOW       = 5'd3;
-  localparam T_GREEN            = 5'd20;
-  localparam T_GREEN_BLINK      = 5'd6;
-  localparam T_YELLOW           = 5'd3;
-  localparam T_IDLE             = 5'd6;
-  localparam BLINK_VAL          = 5'd1;
-  localparam T_COUNTDOWN        = 5'd9;
+    // -----------------------
+    // Registers
+    // -----------------------
+    reg [2:0] car_state;
+    reg [7:0] car_counter;
+    reg [7:0] blink_counter;
+    reg       blink;
 
-  // -----------------------------------------
-  // ------------ Wires / Regs ---------------
-  // -----------------------------------------
+    reg [1:0] ped_state;
+    reg [7:0] ped_counter;
+    reg       ped_blink;
 
-  // traffic lights
-  wire red_light;
-  wire yellow_light;
-  wire green_light;
+    reg [3:0] countdown;
+    reg [3:0] countdown_counter;
+    reg       countdown_active;
 
-  // pedistrian lights
-  wire ped_red_light;
-  wire ped_green_light;
-  
-  // Clock Divider Instances
-  wire clk_1Hz; // for Traffic Light
-  wire clk_1kHz; // for pedestiran push button
-  wire clk_1MHz;
+    reg [8:0] global_counter;
+    reg [8:0] debounce_counter;
+    reg       early_ped_green;
 
-  `ifdef SIM
-    // Simulation: schneller Takt, kleinere Timer
-    wire clk_1Hz_sim;
-    clk_divider #(1000, 1) sim_div(.clk_in(clk), .rst_n(rst_n), .clk_out(clk_1Hz_sim));
-    assign clk_1Hz = clk_1Hz_sim;
-    assign clk_1kHz = clk;
-    assign clk_1MHz = clk_1kHz;
-  `else
-    // Hardware: echte Frequenzen
-    clk_divider #(1000000, 1) hw_div(.clk_in(clk), .rst_n(rst_n), .clk_out(clk_1Hz));
-    clk_divider #(1000000, 1000) hw_div2(.clk_in(clk), .rst_n(rst_n), .clk_out(clk_1kHz));
-  `endif
+    // -----------------------
+    // Input wires
+    // -----------------------
+    
+    wire switch_traffic_light_on = ui_in[0];
+    wire ped_request1 = ui_in[1];
+    wire ped_request2 = ui_in[2];
 
+    // -----------------------
+    // Lights
+    // -----------------------
+    wire car_red_light    = (car_state == C_RED || car_state == C_RED_YELLOW);
+    wire car_yellow_light = (car_state == C_YELLOW || car_state == C_RED_YELLOW || (car_state == C_IDLE && blink));
+    wire car_green_light  = (car_state == C_GREEN || (car_state == C_GREEN_BLINK && blink));
 
-  // clk_divider #(1000000, 1) div_1Hz (.clk_in(clk), .rst_n(rst_n), .clk_out(clk_1Hz));
-  // clk_divider #(1000000, 1000) div_1kHz (.clk_in(clk), .rst_n(rst_n), .clk_out(clk_1kHz)); 
-  // assign clk_1MHz = clk;
+    wire ped_red_light   = ped_state == P_RED && ped_state != P_IDLE;
+    wire ped_green_light = (ped_state == P_GREEN || (ped_state == P_GREEN_BLINK && blink)) && ped_state != P_IDLE;
 
-  // MAX7219
-  wire max_din;
-  wire max_cs;
-  wire max_clk;
+    // car light
+    assign uo_out[0] = car_red_light;
+    assign uo_out[1] = car_yellow_light;
+    assign uo_out[2] = car_green_light;
+    // pedestrian light left
+    assign uo_out[3] = ped_red_light;
+    assign uo_out[4] = ped_green_light;
+    // pedestrian light right
+    assign uo_out[5] = ped_red_light;
+    assign uo_out[6] = ped_green_light;
 
-  // intern signals
-  reg [2:0] cur_state;
-  reg [4:0] clk_counter;
-  reg [4:0] blink_counter;
-  reg       blink;
-  reg       LED_on_off;
+    // MAX7219 Display
+    wire DIN, CS, SCLK;
+    assign uio_out[0] = DIN;
+    assign uio_out[1] = CS;
+    assign uio_out[2] = SCLK;
+    assign uio_out[3] = DIN;
+    assign uio_out[4] = CS;
+    assign uio_out[5] = SCLK;
+    assign uio_out[6] = early_ped_green;
+    assign uio_out[7] = early_ped_green;
+    assign uio_oe = 8'b11111111;
 
-  // -----------------------------------------
-  // --------------- Assigns -----------------
-  // -----------------------------------------
-  
-  assign red_light = (
-    cur_state == S_RED || 
-    cur_state == S_RED_YELLOW
-  );
-  assign yellow_light = (
-    cur_state == S_YELLOW || 
-    cur_state == S_RED_YELLOW ||
-    (cur_state == IDLE && blink)
-  );
-  assign green_light = (
-    cur_state == S_GREEN || 
-    (cur_state == S_GREEN_BLINK && blink)
-  );
-
-  assign ped_red_light = (cur_state == S_YELLOW || cur_state == S_RED_YELLOW || cur_state == S_GREEN || cur_state == S_GREEN_BLINK);
-  assign ped_green_light = cur_state == S_RED;
-
-  // --- output pins ---
-  assign uo_out[0] = red_light;
-  assign uo_out[1] = yellow_light;
-  assign uo_out[2] = green_light;
-  assign uo_out[3] = ped_red_light;
-  assign uo_out[4] = ped_green_light;
-  assign uo_out[7:5] = 3'b0; // unused
-
-  // --- bidirectional pins ---
-  assign uio_out[0] = max_din;
-  assign uio_out[1] = max_cs;
-  assign uio_out[2] = max_clk;
-  assign uio_out[7:3] = 5'b0; // unused
-  assign uio_oe       = 8'b00000111;  // direction 0 (input), 1 (output)
-
-
-  // -----------------------------------------
-  // ------------ Always blocks --------------
-  // -----------------------------------------
-
-  // -------------------------
-  // --- button debouncing ---
-  // -------------------------
-
-  localparam DEBOUNCE_TIME = 50; // number of stable tacts
-  wire pushed_button;
-  assign pushed_button = ui_in[1];  
-  // --- Signale ---
-  reg [8:0] debounce_counter = 0; // genug Bits für DEBOUNCE_TIME
-  reg debounced_push_button = 0;
-  reg button_pressed;
-  reg [3:0] countdown; // für die 0..9 Anzeige
-  reg countdown_active;
-  reg button_release;
-
-  // --- FSM ---
-  always @(posedge clk_1Hz) begin
-    if (!rst_n) begin
-      cur_state   <= IDLE;
-      clk_counter <= 0;
-      button_pressed <= 0;
-      LED_on_off <= 0;
-      countdown_active <= 0;
-      countdown <= 9;
-      button_release <= 0;
-      
-    end else begin
-      if (!switch_on_off) begin // traffic light on / off
-        cur_state <= IDLE;
-        clk_counter <= 0;
-        LED_on_off <=0;
-        countdown_active <= 0;
-        countdown <= 9;
-        button_release <= 0;
-      end else begin
-        case (cur_state)
-
-          IDLE: begin
-            LED_on_off <= 0;
-            countdown_active <= 0;
+    // -----------------------
+    // Car FSM & Pedestrian FSM
+    // -----------------------
+    always @(posedge clk_10Hz or negedge rst_n) begin
+        if (!rst_n) begin
+            car_state <= C_IDLE;
+            car_counter <= 0;
+            ped_state <= P_IDLE;
+            ped_counter <= 0;
             countdown <= 9;
+            countdown_active <= 0;
+            global_counter <= 0;
+        end else if (!switch_traffic_light_on) begin
+            car_state <= C_IDLE;
+            car_counter <= 0;
+            ped_state <= P_IDLE;
+            ped_counter <= 0;
+            countdown_active <= 0;
+            global_counter <= 0;
+        end else begin
+            // Car FSM
+            global_counter <= global_counter + 1;
+            case(car_state)
+                C_IDLE: begin
+                  if(switch_traffic_light_on) begin
+                    car_state <= C_RED;
+                    car_counter <= 0;
+                  end
+                end
+                C_RED: begin
+                    if(car_counter >= T_RED) begin
+                        car_state <= C_RED_YELLOW;
+                        car_counter <= 0;
+                    end else car_counter <= car_counter + 1;
+                end
+                C_RED_YELLOW: begin
+                    if(car_counter >= T_RED_YELLOW) begin
+                        car_state <= C_GREEN;
+                        car_counter <= 0;
+                        global_counter <= 0;
+                    end else car_counter <= car_counter + 1;
+                end
+                C_GREEN: begin
+                    if((early_ped_green && countdown==7) || car_counter >= T_GREEN) begin
+                        car_state <= C_GREEN_BLINK;
+                        car_counter <= 0;
+                    end else car_counter <= car_counter + 1;
+                end
+                C_GREEN_BLINK: begin
+                    if(car_counter >= T_GREEN_BLINK) begin
+                        car_state <= C_YELLOW;
+                        car_counter <= 0;
+                    end else car_counter <= car_counter + 1;
+                end
+                C_YELLOW: begin
+                    if(car_counter >= T_YELLOW) begin
+                        car_state <= C_RED;
+                        car_counter <= 0;
+                    end else car_counter <= car_counter + 1;
+                end
+                default: car_state <= C_IDLE;
+            endcase
 
-            if (clk_counter >= T_IDLE) begin
-              cur_state <= S_RED;
-              clk_counter <= 0;
-            end else begin
-              clk_counter <= clk_counter + 1;
+            // Pedestrian FSM
+            case(ped_state)
+                P_IDLE: begin
+                  if(switch_traffic_light_on) 
+                    ped_state <= P_RED;
+                end
+
+                P_RED: begin
+                  if(car_state == C_RED) begin 
+                    ped_state <= P_GREEN; 
+                    ped_counter <= 0;
+                  end
+                  if (!countdown_active && !early_ped_green) begin
+                    countdown <= 12; //sad smiley
+                  end
+                end
+            
+                P_GREEN: begin
+                  if(car_state == C_RED && car_counter >= T_RED-T_GREEN_BLINK) begin 
+                    ped_state <= P_GREEN_BLINK; 
+                    ped_counter <= 0;
+                  end
+                  if (!countdown_active && !early_ped_green) begin
+                    countdown <= 10; //happy smiley
+                  end
+                end
+
+                P_GREEN_BLINK: begin
+                  if(car_state == C_RED_YELLOW) begin 
+                    ped_state <= P_RED; 
+                    ped_counter <= 0; 
+                  end
+                  if (!countdown_active && !early_ped_green) begin
+                    countdown <= 11; //neutral smiley
+                  end
+                end
+            endcase
+
+            // Countdown
+            if ((early_ped_green||(global_counter >= T_GREEN + T_GREEN_BLINK + T_YELLOW - T_COUNTDOWN-7) && car_state == C_GREEN && ped_state == P_RED) && !countdown_active) begin
+                countdown_active <= 1;
+                countdown_counter <= 0;
+                countdown <= 9;
             end
-          end
 
-          S_RED: begin
-            if (clk_counter >= T_RED) begin
-              cur_state <= S_RED_YELLOW;
-              clk_counter <= 0;
-            end else begin
-              clk_counter <= clk_counter + 1;
+            if(countdown_active) begin
+                countdown_counter <= countdown_counter + 1;
+                if(countdown_counter >= 9) begin
+                    countdown_counter <= 0;
+                    if(countdown == 0) begin
+                        countdown_active <= 0;
+                        countdown <= 9;
+                    end else begin
+                        countdown <= countdown-1;
+                    end
+                end
             end
-          end
-
-          S_RED_YELLOW: begin
-            if (clk_counter >= T_RED_YELLOW) begin
-              cur_state <= S_GREEN;
-              clk_counter <= 0;
-            end else clk_counter <= clk_counter + 1;
-          end
-
-          S_GREEN: begin
-            if (debounced_push_button) begin
-              button_pressed <= 1;
-            end
-            if ((button_pressed && !countdown_active) || (clk_counter == T_GREEN - T_COUNTDOWN)) begin
-              LED_on_off <=1;
-              countdown_active <= 1;
-              countdown <= 9; // Startwert
-            end
-
-            if (countdown_active) begin
-              if (clk_counter % 1 == 0)
-                  countdown <= countdown - 1;
-              if (countdown == 0) begin
-                  cur_state <= S_GREEN_BLINK;            
-                  button_pressed <= 0;
-                  LED_on_off <=0;
-                  countdown_active <= 0;
-                  clk_counter <= 0;    
-              end
-            end else begin
-                clk_counter <= clk_counter + 1;
-            end
-          end
-
-          S_GREEN_BLINK: begin
-            if (clk_counter >= T_GREEN_BLINK) begin
-              cur_state <= S_YELLOW;
-              clk_counter <= 0;
-            end else clk_counter <= clk_counter + 1;
-          end
-
-          S_YELLOW: begin
-            if (clk_counter >= T_YELLOW) begin
-              cur_state <= S_RED;
-              clk_counter <= 0;
-            end else clk_counter <= clk_counter + 1;
-          end
-
-          default: begin
-            cur_state   <= IDLE;
-            clk_counter <= 0;
-          end
-        endcase
-      end
+        end
     end
-  end
 
-  // --- Debounce Logik ---
-  always @(posedge clk_1kHz) begin
-      if (!rst_n) begin
-          debounce_counter <= 0;
-          debounced_push_button <= 0;
-      end else begin
-          if (pushed_button) begin               
-              if (debounce_counter >= DEBOUNCE_TIME)
-                  debounced_push_button <= 1;
-              else
-                debounce_counter <= debounce_counter + 1;              
-          end else begin
-              debounce_counter <= 0;
-              debounced_push_button <= 0;
-          end
-      end
-  end
-
-  // --- blink generator ---
-  always @(posedge clk_1Hz) begin
-    if (!rst_n) begin
-      blink_counter <= 0;
-      blink         <= 0;
-    end else if (cur_state == S_GREEN_BLINK || cur_state == IDLE) begin
-      if (blink_counter == BLINK_VAL - 1) begin
-        blink_counter <= 0;
-        blink <= ~blink;
-      end else blink_counter <= blink_counter + 1;
-    end else begin
-      blink_counter <= 0;
-      blink <= 0;
+    // -----------------------
+    // Blink generator
+    // -----------------------
+    always @(posedge clk_10Hz or negedge rst_n) begin
+        if (!rst_n) begin
+            blink_counter <= 0;
+            blink <= 0;
+        end else begin
+            if (car_state == C_GREEN_BLINK || car_state == C_IDLE || ped_state == P_GREEN_BLINK) begin
+                if (blink_counter == BLINK_VAL-1) begin
+                    blink_counter <= 0;
+                    blink <= ~blink;
+                end else begin
+                    blink_counter <= blink_counter + 1;
+                end
+            end else begin
+                blink_counter <= 0;
+                blink <= 0;
+            end
+        end
     end
-  end
 
-  // Display Driver for MAX7219
-  max7219_driver display_driver(
-    .clk(clk_1MHz),
-    .digit(countdown),
-    .display_active(LED_on_off),
-    .DIN(max_din),
-    .CS(max_cs),
-    .SCLK(max_clk)
-);
+    // -----------------------
+    // Debounce
+    // -----------------------
+    always @(posedge clk_1kHz or negedge rst_n) begin
+        if (!rst_n) begin
+            debounce_counter <= 0;
+            early_ped_green <= 0;
+        end else begin
+            if ((ped_request1 || ped_request2) && car_state==C_GREEN && !early_ped_green) begin
+                if(debounce_counter >= DEBOUNCE_TIME) begin
+                    early_ped_green <= 1;
+                end
+                else begin
+                    debounce_counter <= debounce_counter + 1;
+                end
+            end else begin
+                debounce_counter <= 0;
+            end
+            if(early_ped_green && countdown == 0) begin
+                early_ped_green <= 0;
+            end
+        end
+    end
+
+    // -----------------------
+    // Display
+    // -----------------------
+    max7219_driver matrix_driver (
+      .clk(clk_1MHz),
+      .rst_n(rst_n),
+      .digit(countdown),
+      .display_active(countdown_active),
+      .DIN(DIN),
+      .CS(CS),
+      .SCLK(SCLK)
+    );
+
 endmodule
 `endif
