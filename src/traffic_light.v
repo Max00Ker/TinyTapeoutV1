@@ -42,7 +42,8 @@ module tt_um_Max00Ker_Traffic_Light (
         // assign clk_1kHz = clk;
         // assign clk_1MHz = clk;
         clk_enable #(1000, 10)   div10 (.clk(clk), .rst_n(rst_n), .ena_pulse(ena_10Hz));
-        assign ena_1kHz = clk;
+        clk_enable #(1000, 1000)   div1k (.clk(clk), .rst_n(rst_n), .ena_pulse(ena_1kHz));
+        
     `else
         // Values for real Hardware
         // clk_divider #(1_000_000, 10) hw_div10Hz  (.clk_in(clk), .rst_n(rst_n), .clk_out(clk_10Hz));
@@ -51,10 +52,6 @@ module tt_um_Max00Ker_Traffic_Light (
         clk_enable #(1_000_000, 1000) div1k (.clk(clk), .rst_n(rst_n), .ena_pulse(ena_1kHz));
         clk_enable #(1_000_000, 10)   div10 (.clk(clk), .rst_n(rst_n), .ena_pulse(ena_10Hz));
     `endif
-
-    
-
-
 
     // -----------------------
     // States & Parameters
@@ -98,13 +95,15 @@ module tt_um_Max00Ker_Traffic_Light (
     reg [8:0] global_counter;
     reg [8:0] debounce_counter;
     reg       early_ped_green;
+    reg       pushed_left;
+    reg       pushed_right;
 
     // -----------------------
     // Input wires
     // -----------------------
     wire switch_traffic_light_on = ui_in[0];
-    wire ped_request1 = ui_in[1];
-    wire ped_request2 = ui_in[2];
+    wire ped_request_left = ui_in[1];
+    wire ped_request_right = ui_in[2];
     // List all unused inputs to prevent warnings
     wire _unused = &{ena, clk, rst_n, ui_in[3], ui_in[4], ui_in[5], ui_in[6], ui_in[7], uio_in, 1'b0};
 
@@ -146,8 +145,8 @@ module tt_um_Max00Ker_Traffic_Light (
     assign uio_out[3] = DIN;
     assign uio_out[4] = CS;
     assign uio_out[5] = SCLK;
-    assign uio_out[6] = early_ped_green;
-    assign uio_out[7] = early_ped_green;
+    assign uio_out[6] = pushed_left;
+    assign uio_out[7] = pushed_right;
     assign uio_oe = 8'b11111111;
 
     // -----------------------
@@ -162,9 +161,13 @@ module tt_um_Max00Ker_Traffic_Light (
             countdown <= 9;
             countdown_active <= 0;
             global_counter <= 0;
-            
+
             blink_counter <= 0;
             blink <= 0;
+            debounce_counter <= 0;
+            early_ped_green <= 0;
+            pushed_left <=0;
+            pushed_right <=0;
         end else if (ena_10Hz) begin
             if (!switch_traffic_light_on) begin
                 car_state <= C_IDLE;
@@ -271,6 +274,9 @@ module tt_um_Max00Ker_Traffic_Light (
                     end
                 end
             end
+            // -----------------------
+            // Blink generator
+            // -----------------------
             if (car_state == C_GREEN_BLINK || car_state == C_IDLE || ped_state == P_GREEN_BLINK) begin
                 if (blink_counter == BLINK_VAL-1) begin
                     blink_counter <= 0;
@@ -281,6 +287,30 @@ module tt_um_Max00Ker_Traffic_Light (
             end else begin
                 blink_counter <= 0;
                 blink <= 0;
+            end
+        // -----------------------
+        // Debounce
+        // -----------------------
+        end else if (ena_1kHz) begin
+            if ((ped_request_left || ped_request_right) && car_state==C_GREEN && !early_ped_green) begin
+                if(debounce_counter >= DEBOUNCE_TIME) begin
+                    early_ped_green <= 1;
+                    if(ped_request_left) begin
+                        pushed_left<=1;
+                    end else begin
+                        pushed_right <=1;
+                    end
+                end
+                else begin
+                    debounce_counter <= debounce_counter + 1;
+                end
+            end else begin
+                debounce_counter <= 0;
+            end
+            if(early_ped_green && countdown == 0) begin
+                early_ped_green <= 0;
+                pushed_left <= 0;
+                pushed_right <= 0;
             end
         end
     end
@@ -310,26 +340,26 @@ module tt_um_Max00Ker_Traffic_Light (
     // -----------------------
     // Debounce
     // -----------------------
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            debounce_counter <= 0;
-            early_ped_green <= 0;
-        end if(ena_1kHz) begin
-            if ((ped_request1 || ped_request2) && car_state==C_GREEN && !early_ped_green) begin
-                if(debounce_counter >= DEBOUNCE_TIME) begin
-                    early_ped_green <= 1;
-                end
-                else begin
-                    debounce_counter <= debounce_counter + 1;
-                end
-            end else begin
-                debounce_counter <= 0;
-            end
-            if(early_ped_green && countdown == 0) begin
-                early_ped_green <= 0;
-            end
-        end
-    end
+    // always @(posedge clk or negedge rst_n) begin
+    //     if (!rst_n) begin
+    //         debounce_counter <= 0;
+    //         early_ped_green <= 0;
+    //     end if(ena_1kHz) begin
+    //         if ((ped_request_left || ped_request_right) && car_state==C_GREEN && !early_ped_green) begin
+    //             if(debounce_counter >= DEBOUNCE_TIME) begin
+    //                 early_ped_green <= 1;
+    //             end
+    //             else begin
+    //                 debounce_counter <= debounce_counter + 1;
+    //             end
+    //         end else begin
+    //             debounce_counter <= 0;
+    //         end
+    //         if(early_ped_green && countdown == 0) begin
+    //             early_ped_green <= 0;
+    //         end
+    //     end
+    // end
 
     // -----------------------
     // Display

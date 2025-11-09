@@ -66,7 +66,7 @@ module max7219_driver(
     `endif
 
     reg [7:0] row_data;
-
+    
     always @(*) begin
         case (digit)
             4'd0: case(row_index) // Digit 0
@@ -237,7 +237,7 @@ module max7219_driver(
                     next_state <= INIT_DECODE;
                 end
                 INIT_DECODE: begin
-                    // Decode register -> no decode for digits 7-0
+                    // Decode register -> no decode
                     spi_data <= {8'h09, 8'h00};
                     CS <= 0;
                     start_transfer <= 1;
@@ -280,18 +280,6 @@ module max7219_driver(
                     else
                         // all LED's off
                         spi_data <= {8'h01 + {5'b0, row_index}, 8'b00000000};
-
-                    // for simulation
-                    // `ifdef SIM
-                    //     display_row0 <= get_font(digit, 0);
-                    //     display_row1 <= get_font(digit, 1);
-                    //     display_row2 <= get_font(digit, 2);
-                    //     display_row3 <= get_font(digit, 3);
-                    //     display_row4 <= get_font(digit, 4);
-                    //     display_row5 <= get_font(digit, 5);
-                    //     display_row6 <= get_font(digit, 6);
-                    //     display_row7 <= get_font(digit, 7);
-                    // `endif
                     CS <= 0;
                     start_transfer <= 1;
                     state <= WAIT_SPI;
