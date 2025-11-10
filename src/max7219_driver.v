@@ -266,7 +266,7 @@ module max7219_driver(
                     CS <= 0;
                     start_transfer <= 1;
                     state <= WAIT_SPI;
-                    next_state <= SEND_ROW;
+                    next_state <= IDLE;
                 end
                 // -----------------------
                 // END OF INIT
@@ -313,7 +313,7 @@ module max7219_driver(
                             state <= IDLE;
                         end else begin
                             row_index <= row_index + 1;
-                            state <= SEND_ROW;
+                            state <= next_state;
                         end
                     end
                 end
