@@ -15,7 +15,7 @@
 `default_nettype none
 
 module spi_master (
-    input wire clk,            // System clock (z.B. 1 MHz)
+    input wire clk,            // System clock (1 MHz)
     input wire rst_n,
     input wire start,          // Start transfer
     input wire [15:0] data_in, // 16 Bit to send
@@ -26,13 +26,13 @@ module spi_master (
 
     reg [15:0] shift_reg;
     reg [3:0] bit_index;
-    reg [1:0] clk_div; // Einfacher Taktteiler
+    reg [1:0] clk_div;
     reg finished;
 
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin
             shift_reg <= 16'b0;
-            bit_index <= 4'd15;
+            bit_index <= 4'd15; //start with MSB
             SCLK <= 0;
             DIN <= 0;
             busy <= 0;
@@ -50,21 +50,21 @@ module spi_master (
                     SCLK <= ~SCLK;
 
                     if (!SCLK) begin
-                        // Daten ausgeben bei fallender Flanke
-                        DIN <= shift_reg[bit_index];
-                    end else begin
-                        // Bei steigender Flanke bit_index dekrementieren
                         if (bit_index == 0) begin
                             finished <= 1;
                         end else begin
                             bit_index <= bit_index - 1;
                         end
+                    end else begin
+                        DIN <= shift_reg[bit_index];
                     end
                 end
             end else if (start) begin
                 busy <= 1;
                 shift_reg <= data_in;
                 bit_index <= 4'd15;
+                DIN <= data_in[15];
+                SCLK <= 0;
             end
         end
     end

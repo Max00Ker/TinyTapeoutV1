@@ -29,28 +29,16 @@ module tt_um_Max00Ker_Traffic_Light (
 );
 
     // -----------------------
-    // Clock generation
+    // Clock Divider / Enable
     // -----------------------
-    // wire clk_10Hz;
-    // wire clk_1kHz;
-    // wire clk_1MHz;
     wire ena_1kHz, ena_10Hz;
 
     `ifdef SIM
-        // Values for GTKWave Simulation
-        // clk_divider #(1000, 10) sim_div10Hz (.clk_in(clk), .rst_n(rst_n), .clk_out(clk_10Hz));
-        // assign clk_1kHz = clk;
-        // assign clk_1MHz = clk;
-        clk_enable #(1000, 10)   div10 (.clk(clk), .rst_n(rst_n), .ena_pulse(ena_10Hz));
-        clk_enable #(1000, 1000)   div1k (.clk(clk), .rst_n(rst_n), .ena_pulse(ena_1kHz));
-        
+        clk_enable #(1000, 10)      div10 (.clk(clk), .rst_n(rst_n), .ena_pulse(ena_10Hz));
+        clk_enable #(1000, 1000)    div1k (.clk(clk), .rst_n(rst_n), .ena_pulse(ena_1kHz));
     `else
-        // Values for real Hardware
-        // clk_divider #(1_000_000, 10) hw_div10Hz  (.clk_in(clk), .rst_n(rst_n), .clk_out(clk_10Hz));
-        // clk_divider #(1_000_000, 1000) hw_div1kHz (.clk_in(clk), .rst_n(rst_n), .clk_out(clk_1kHz));
-        // assign clk_1MHz = clk;
-        clk_enable #(1_000_000, 1000) div1k (.clk(clk), .rst_n(rst_n), .ena_pulse(ena_1kHz));
-        clk_enable #(1_000_000, 10)   div10 (.clk(clk), .rst_n(rst_n), .ena_pulse(ena_10Hz));
+        clk_enable #(1000000, 10)   div10 (.clk(clk), .rst_n(rst_n), .ena_pulse(ena_10Hz));
+        clk_enable #(1000000, 1000) div1k (.clk(clk), .rst_n(rst_n), .ena_pulse(ena_1kHz));
     `endif
 
     // -----------------------
@@ -91,6 +79,7 @@ module tt_um_Max00Ker_Traffic_Light (
     reg [3:0] countdown;
     reg [3:0] countdown_counter;
     reg       countdown_active;
+    reg       enable_smiley;
 
     reg [8:0] global_counter;
     reg [8:0] debounce_counter;
@@ -104,6 +93,7 @@ module tt_um_Max00Ker_Traffic_Light (
     wire switch_traffic_light_on = ui_in[0];
     wire ped_request_left = ui_in[1];
     wire ped_request_right = ui_in[2];
+
     // List all unused inputs to prevent warnings
     wire _unused = &{ena, clk, rst_n, ui_in[3], ui_in[4], ui_in[5], ui_in[6], ui_in[7], uio_in, 1'b0};
 
@@ -116,26 +106,32 @@ module tt_um_Max00Ker_Traffic_Light (
 
     wire ped_red_light   = ped_state == P_RED && ped_state != P_IDLE;
     wire ped_green_light = (ped_state == P_GREEN || (ped_state == P_GREEN_BLINK && blink)) && ped_state != P_IDLE;
+
+    // -----------------------
+    // MAX7219 Display
+    // -----------------------
+    wire DIN;
+    wire CS;
+    wire SCLK;
     
 
     // -----------------------
     // Output pins
     // -----------------------
-    // car light
+
+    // Car light
     assign uo_out[0] = car_red_light;
     assign uo_out[1] = car_yellow_light;
     assign uo_out[2] = car_green_light;
-    // pedestrian light left
+    // Pedestrian light left
     assign uo_out[3] = ped_red_light;
     assign uo_out[4] = ped_green_light;
-    // pedestrian light right
+    // Pedestrian light right
     assign uo_out[5] = ped_red_light;
     assign uo_out[6] = ped_green_light;
     // All output pins must be assigned. If not used, assign to 0.
     assign uo_out[7] = 0;
 
-    // MAX7219 Display
-    wire DIN, CS, SCLK;
     // -----------------------
     // Bidirectional pins
     // -----------------------
@@ -153,7 +149,6 @@ module tt_um_Max00Ker_Traffic_Light (
     // Car FSM & Pedestrian FSM
     // -----------------------
     always @(posedge clk or negedge rst_n) begin
-    // always @(posedge clk_10Hz or negedge rst_n) begin
         if (!rst_n) begin
             car_state <= C_IDLE;
             car_counter <= 0;
@@ -168,6 +163,8 @@ module tt_um_Max00Ker_Traffic_Light (
             early_ped_green <= 0;
             pushed_left <=0;
             pushed_right <=0;
+
+            enable_smiley <=0;
         end else if (ena_10Hz) begin
             if (!switch_traffic_light_on) begin
                 car_state <= C_IDLE;
@@ -176,7 +173,9 @@ module tt_um_Max00Ker_Traffic_Light (
                 countdown_active <= 0;
                 global_counter <= 0;
             end else begin
+                // -----------------------
                 // Car FSM
+                // -----------------------
                 global_counter <= global_counter + 1;
                 case(car_state)
                     C_IDLE: begin
@@ -219,42 +218,56 @@ module tt_um_Max00Ker_Traffic_Light (
                     default: car_state <= C_IDLE;
                 endcase
 
+                // -----------------------
                 // Pedestrian FSM
+                // -----------------------
                 case(ped_state)
                     P_IDLE: begin
-                    if(switch_traffic_light_on) 
-                        ped_state <= P_RED;
+                        if(switch_traffic_light_on) begin
+                            ped_state <= P_RED;
+                        end
                     end
 
                     P_RED: begin
-                    if(car_state == C_RED) begin 
-                        ped_state <= P_GREEN; 
-                    end
-                    if (!countdown_active && !early_ped_green) begin
-                        countdown <= 12; //sad smiley
-                    end
+                        if(car_state == C_RED) begin 
+                            ped_state <= P_GREEN; 
+                        end
+                        if (!countdown_active && !early_ped_green) begin
+                            countdown <= 12; //sad smiley
+                            enable_smiley <= 1;
+                        end else begin
+                            enable_smiley <= 0;
+                        end
                     end
                 
                     P_GREEN: begin
-                    if(car_state == C_RED && car_counter >= T_RED-T_GREEN_BLINK) begin 
-                        ped_state <= P_GREEN_BLINK; 
-                    end
-                    if (!countdown_active && !early_ped_green) begin
-                        countdown <= 10; //happy smiley
-                    end
+                        if(car_state == C_RED && car_counter >= T_RED-T_GREEN_BLINK) begin 
+                            ped_state <= P_GREEN_BLINK; 
+                        end
+                        if (!countdown_active && !early_ped_green) begin
+                            countdown <= 10; //happy smiley
+                            enable_smiley <= 1;
+                        end else begin
+                            enable_smiley <= 0;
+                        end
                     end
 
                     P_GREEN_BLINK: begin
-                    if(car_state == C_RED_YELLOW) begin 
-                        ped_state <= P_RED; 
-                    end
-                    if (!countdown_active && !early_ped_green) begin
-                        countdown <= 11; //neutral smiley
-                    end
+                        if(car_state == C_RED_YELLOW) begin 
+                            ped_state <= P_RED; 
+                        end
+                        if (!countdown_active && !early_ped_green) begin
+                            countdown <= 11; //neutral smiley
+                            enable_smiley <= 1;
+                        end else begin
+                            enable_smiley <= 0;
+                        end
                     end
                 endcase
 
+                // -----------------------
                 // Countdown
+                // -----------------------
                 if ((early_ped_green||(global_counter >= T_GREEN + T_GREEN_BLINK + T_YELLOW - T_COUNTDOWN-7) && car_state == C_GREEN && ped_state == P_RED) && !countdown_active) begin
                     countdown_active <= 1;
                     countdown_counter <= 0;
@@ -274,6 +287,7 @@ module tt_um_Max00Ker_Traffic_Light (
                     end
                 end
             end
+
             // -----------------------
             // Blink generator
             // -----------------------
@@ -288,87 +302,41 @@ module tt_um_Max00Ker_Traffic_Light (
                 blink_counter <= 0;
                 blink <= 0;
             end
-        // -----------------------
-        // Debounce
-        // -----------------------
-        end else if (ena_1kHz) begin
-            if ((ped_request_left || ped_request_right) && car_state==C_GREEN && !early_ped_green) begin
-                if(debounce_counter >= DEBOUNCE_TIME) begin
-                    early_ped_green <= 1;
-                    if(ped_request_left) begin
-                        pushed_left<=1;
-                    end else begin
-                        pushed_right <=1;
+        end else 
+            // -----------------------
+            // Debounce pedestrian buttons
+            // -----------------------
+            if (ena_1kHz) begin
+                if ((ped_request_left || ped_request_right) && car_state==C_GREEN && !early_ped_green) begin
+                    if(debounce_counter >= DEBOUNCE_TIME) begin
+                        early_ped_green <= 1;
                     end
+                    else begin
+                        debounce_counter <= debounce_counter + 1;
+                    end
+                end else if(early_ped_green && ped_request_left)begin
+                    pushed_left<=1;
+                end else if(early_ped_green && ped_request_right)begin
+                    pushed_right <=1;
+                end else begin
+                    debounce_counter <= 0;
                 end
-                else begin
-                    debounce_counter <= debounce_counter + 1;
+                if(early_ped_green && countdown == 0) begin
+                    early_ped_green <= 0;
+                    pushed_left <= 0;
+                    pushed_right <= 0;
                 end
-            end else begin
-                debounce_counter <= 0;
             end
-            if(early_ped_green && countdown == 0) begin
-                early_ped_green <= 0;
-                pushed_left <= 0;
-                pushed_right <= 0;
-            end
-        end
     end
 
-    // // -----------------------
-    // // Blink generator
-    // // -----------------------
-    // always @(posedge clk or negedge rst_n) begin
-    //     if (!rst_n) begin
-    //         blink_counter <= 0;
-    //         blink <= 0;
-    //     end if(ena_10Hz) begin
-    //         if (car_state == C_GREEN_BLINK || car_state == C_IDLE || ped_state == P_GREEN_BLINK) begin
-    //             if (blink_counter == BLINK_VAL-1) begin
-    //                 blink_counter <= 0;
-    //                 blink <= ~blink;
-    //             end else begin
-    //                 blink_counter <= blink_counter + 1;
-    //             end
-    //         end else begin
-    //             blink_counter <= 0;
-    //             blink <= 0;
-    //         end
-    //     end
-    // end
-
     // -----------------------
-    // Debounce
-    // -----------------------
-    // always @(posedge clk or negedge rst_n) begin
-    //     if (!rst_n) begin
-    //         debounce_counter <= 0;
-    //         early_ped_green <= 0;
-    //     end if(ena_1kHz) begin
-    //         if ((ped_request_left || ped_request_right) && car_state==C_GREEN && !early_ped_green) begin
-    //             if(debounce_counter >= DEBOUNCE_TIME) begin
-    //                 early_ped_green <= 1;
-    //             end
-    //             else begin
-    //                 debounce_counter <= debounce_counter + 1;
-    //             end
-    //         end else begin
-    //             debounce_counter <= 0;
-    //         end
-    //         if(early_ped_green && countdown == 0) begin
-    //             early_ped_green <= 0;
-    //         end
-    //     end
-    // end
-
-    // -----------------------
-    // Display
+    // Display Instance
     // -----------------------
     max7219_driver matrix_driver (
       .clk(clk),
       .rst_n(rst_n),
       .digit(countdown),
-      .display_active(countdown_active),
+      .enable_display((countdown_active || enable_smiley) && switch_traffic_light_on),
       .DIN(DIN),
       .CS(CS),
       .SCLK(SCLK)

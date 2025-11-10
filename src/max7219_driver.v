@@ -17,15 +17,15 @@ module max7219_driver(
     input wire clk,             // FPGA clock (1MHz)
     input wire rst_n,
     input wire [3:0] digit,     // digit to display
-    input wire display_active,  // display LED on or off
+    input wire enable_display,  // display LED on or off
     output wire DIN,            // Data to MAX7219
     output reg CS,              // Chip select
     output wire SCLK            // Serial Clock
 );
 
-    // ===============================
+    // -----------------------
     // SPI interface
-    // ===============================
+    // -----------------------
     reg  [15:0] spi_data;
     reg         start_transfer;
     wire        busy_spi;
@@ -40,40 +40,37 @@ module max7219_driver(
         .busy   (busy_spi)
     );
 
-    // States
-    parameter INIT_SHUTDOWN    = 3'd0;
-    parameter INIT_DECODE      = 3'd1;
-    parameter INIT_SCANLIMIT   = 3'd2;
-    parameter INIT_INTENSITY   = 3'd3;
-    parameter INIT_DISPLAYTEST = 3'd4;
-    parameter SEND_ROW         = 3'd5;
-    parameter WAIT_SPI         = 3'd6;
+    // -----------------------
+    // STATES
+    // -----------------------
+    parameter INIT_SHUTDOWN    = 4'd0;
+    parameter INIT_DECODE      = 4'd1;
+    parameter INIT_SCANLIMIT   = 4'd2;
+    parameter INIT_INTENSITY   = 4'd3;
+    parameter INIT_DISPLAYTEST = 4'd4;
+    parameter IDLE             = 4'd5; 
+    parameter START_ROW_CYCLE  = 4'd6; 
+    parameter SEND_ROW         = 4'd7;
+    parameter WAIT_SPI         = 4'd8;
 
     reg [2:0] row_index;
-    reg [2:0] state;
-    reg [2:0] next_state;
-
-    // debug registers for GTKWave-sim
-    `ifdef SIM
-        reg [7:0] display_row0;
-        reg [7:0] display_row1;
-        reg [7:0] display_row2;
-        reg [7:0] display_row3;
-        reg [7:0] display_row4;
-        reg [7:0] display_row5;
-        reg [7:0] display_row6;
-        reg [7:0] display_row7;
-    `endif
-
+    reg [3:0] state;
+    reg [3:0] next_state;
+    reg [3:0] digit_reg;
     reg [7:0] row_data;
-    
+
+    wire digit_changed = (digit != digit_reg) || ( enable_display == 1'b0);
+
+    // -----------------------
+    // DISPLAY PATTERNS
+    // -----------------------
     always @(*) begin
         case (digit)
             4'd0: case(row_index) // Digit 0
                 3'd0: row_data = 8'b00111100;
                 3'd1: row_data = 8'b01100110;
                 3'd2: row_data = 8'b01100110;
-                3'd3: row_data = 8'b01111110;
+                3'd3: row_data = 8'b01100110;
                 3'd4: row_data = 8'b01100110;
                 3'd5: row_data = 8'b01100110;
                 3'd6: row_data = 8'b00111100;
@@ -195,7 +192,7 @@ module max7219_driver(
                 3'd1: row_data = 8'b01000010;
                 3'd2: row_data = 8'b10100101;
                 3'd3: row_data = 8'b10000001;
-                3'd4: row_data = 8'b10011101;
+                3'd4: row_data = 8'b10111101;
                 3'd5: row_data = 8'b10000001;
                 3'd6: row_data = 8'b01000010;
                 3'd7: row_data = 8'b00111100;
@@ -216,13 +213,16 @@ module max7219_driver(
         endcase
     end
 
+    // -----------------------
     // FSM
+    // -----------------------
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state <= INIT_SHUTDOWN;
             row_index <= 0;
             CS <= 1;
             start_transfer <= 0;
+            digit_reg <= 4'd0;
         end else begin
             case (state)
                 // ----------------------
@@ -255,7 +255,7 @@ module max7219_driver(
                 INIT_INTENSITY: begin
                     // Intensity register -> max intensity
                     spi_data <= {8'h0A, 8'h0F}; 
-                    CS <= 0;
+                    CS <= 0;                    
                     start_transfer <= 1;
                     state <= WAIT_SPI;
                     next_state <= INIT_DISPLAYTEST;
@@ -268,35 +268,56 @@ module max7219_driver(
                     state <= WAIT_SPI;
                     next_state <= SEND_ROW;
                 end
-                // End of Init
+                // -----------------------
+                // END OF INIT
+                // -----------------------
+
 
                 // ----------------------
-                // send digit
+                // DATA
                 // ----------------------
+                IDLE: begin
+                    if (digit_changed) begin
+                        digit_reg <= digit;
+                        state <= START_ROW_CYCLE;
+                    end else begin
+                        state <= IDLE;
+                    end
+                end
+
+                START_ROW_CYCLE: begin
+                    row_index <= 0;
+                    state <= SEND_ROW;
+                end
+
                 SEND_ROW: begin                 
-                    if (display_active)
+                    if (enable_display)
                         // {address 00000001, data 00000000}
                         spi_data <= {8'h01 + {5'b0, row_index}, row_data};
                     else
-                        // all LED's off
                         spi_data <= {8'h01 + {5'b0, row_index}, 8'b00000000};
                     CS <= 0;
                     start_transfer <= 1;
                     state <= WAIT_SPI;
                     next_state <= SEND_ROW;
                 end
-                
+
                 // ----------------------
                 // Wait for SPI-Master
                 // ----------------------
                 WAIT_SPI: begin
-                    start_transfer <= 0;  // nur 1 Takt impuls
+                    start_transfer <= 0;
                     if (!busy_spi && !start_transfer) begin
                         CS <= 1;
-                        row_index <= (row_index == 7) ? 0 : row_index + 1;
-                        state <= next_state;
+                        if(row_index == 7)begin
+                            state <= IDLE;
+                        end else begin
+                            row_index <= row_index + 1;
+                            state <= SEND_ROW;
+                        end
                     end
                 end
+
                 default: state <= INIT_SHUTDOWN;
             endcase
         end
