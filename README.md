@@ -1,42 +1,87 @@
 ![](../../workflows/gds/badge.svg) ![](../../workflows/docs/badge.svg) ![](../../workflows/test/badge.svg) ![](../../workflows/fpga/badge.svg)
 
-# Tiny Tapeout Verilog Project Template
+# Traffic Light Controller — Tiny Tapeout Project
+
+This project implements a **digital traffic light controller** with **pedestrian request logic** and **LED countdown displays** on a Tiny Tapeout chip.  
+
+The system:
+
+- Controls car and pedestrian lights  
+- Allows pedestrians to request an early green phase  
+- Shows a visual countdown using two MAX7219 LED matrices  
+- Displays smiley faces corresponding to the pedestrian signal:
+  - 😀 Green — safe to walk  
+  - 😐 Blinking green — pedestrian phase ending  
+  - ☹️ Red — wait  
+
+
+This project implements a **digital traffic light controller** with integrated **pedestrian request logic** and **MAX7219 LED display output**.  
+It demonstrates how real-world traffic light behavior can be implemented entirely in **Verilog**, including:
+
+- FSM-based traffic light sequencing  
+- Button-debouncing and pedestrian request handling  
+- Visual countdown with MAX7219 LED matrices and smiley faces  
+
+![WokwiSimulation](docs/WokwiSimulation.png)
+
+The system is designed for **1 MHz clock operation** and has been simulated in **GTKWave** and validated in **Wokwi**.
+
+---
+
+## Documentation
+
+For detailed information about the project, see the full documentation:
 
 - [Read the documentation for project](docs/info.md)
+
+---
+
+## How to Test with Hardware
+
+### 1. Connect the LEDs
+
+| Output pin | Function |
+|------------|---------|
+| uo[0]      | Car red |
+| uo[1]      | Car yellow |
+| uo[2]      | Car green |
+| uo[3]      | Pedestrian red (right) |
+| uo[4]      | Pedestrian green (right) |
+| uo[5]      | Pedestrian red (left) |
+| uo[6]      | Pedestrian green (left) |
+
+### 2. Connect the Inputs
+
+| Input pin | Function |
+|-----------|---------|
+| ui[0]     | Main ON/OFF switch |
+| ui[1]     | Pedestrian request (left) |
+| ui[2]     | Pedestrian request (right) |
+
+### 3. Connect the MAX7219 LED Modules
+
+| Pin | Function |
+|-----|---------|
+| uio[0] | DIN (left module) |
+| uio[1] | CLK (left module) |
+| uio[2] | CS  (left module) |
+| uio[3] | DIN (right module) |
+| uio[4] | CLK (right module) |
+| uio[5] | CS  (right module) |
+| uio[6] | Pedestrian request indicator (left) |
+| uio[7] | Pedestrian request indicator (right) |
+
+### 4. Power On and Observe
+
+- The traffic lights will run through the automatic sequence  
+- Pedestrian requests will trigger early green if pressed during red  
+- The LED matrices show the countdown and the corresponding smiley face  
+- Request indicators light up when the system acknowledges a pedestrian input  
+
+---
 
 ## What is Tiny Tapeout?
 
 Tiny Tapeout is an educational project that aims to make it easier and cheaper than ever to get your digital and analog designs manufactured on a real chip.
 
 To learn more and get started, visit https://tinytapeout.com.
-
-## Set up your Verilog project
-
-1. Add your Verilog files to the `src` folder.
-2. Edit the [info.yaml](info.yaml) and update information about your project, paying special attention to the `source_files` and `top_module` properties. If you are upgrading an existing Tiny Tapeout project, check out our [online info.yaml migration tool](https://tinytapeout.github.io/tt-yaml-upgrade-tool/).
-3. Edit [docs/info.md](docs/info.md) and add a description of your project.
-4. Adapt the testbench to your design. See [test/README.md](test/README.md) for more information.
-
-The GitHub action will automatically build the ASIC files using [LibreLane](https://www.zerotoasiccourse.com/terminology/librelane/).
-
-## Enable GitHub actions to build the results page
-
-- [Enabling GitHub Pages](https://tinytapeout.com/faq/#my-github-action-is-failing-on-the-pages-part)
-
-## Resources
-
-- [FAQ](https://tinytapeout.com/faq/)
-- [Digital design lessons](https://tinytapeout.com/digital_design/)
-- [Learn how semiconductors work](https://tinytapeout.com/siliwiz/)
-- [Join the community](https://tinytapeout.com/discord)
-- [Build your design locally](https://www.tinytapeout.com/guides/local-hardening/)
-
-## What next?
-
-- [Submit your design to the next shuttle](https://app.tinytapeout.com/).
-- Edit [this README](README.md) and explain your design, how it works, and how to test it.
-- Share your project on your social network of choice:
-  - LinkedIn [#tinytapeout](https://www.linkedin.com/search/results/content/?keywords=%23tinytapeout) [@TinyTapeout](https://www.linkedin.com/company/100708654/)
-  - Mastodon [#tinytapeout](https://chaos.social/tags/tinytapeout) [@matthewvenn](https://chaos.social/@matthewvenn)
-  - X (formerly Twitter) [#tinytapeout](https://twitter.com/hashtag/tinytapeout) [@tinytapeout](https://twitter.com/tinytapeout)
-  - Bluesky [@tinytapeout.com](https://bsky.app/profile/tinytapeout.com)
